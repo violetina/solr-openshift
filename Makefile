@@ -34,10 +34,17 @@ clone:
 	cd /tmp && git clone  --single-branch -b ${BRANCH} "${REPO_URI}" 
 deploy:
 	oc create -f solr-tmpl.yaml
+	oc adm policy add-scc-to-user privileged -n ${OC_PROJECT} -z default
+
 clean:
 	rm -rf /tmp/${GIT_NAME}
 delete:
 	oc delete dc/solr-${ENV}
 all:	clean login commit clone deploy clean
 
+
+# upload config to zoo EXAMPLE
+#   oc -n catalogi exec -ti solr-metadatacatalogus-prd-2-b8gxf ./server/scripts/cloud-scripts/zkcli.sh -- -zkhost zookeeper-service-qas.catalogi.svc:2181 -cmd upconfig metadatacatalogus -confdir server/solr/metadatacatalogus/conf/ -confname metadatacatalogus
+#   oc get pods
+#   oc -n catalogi exec -ti solr-cataloguspro-prd-sync-2-rgfht ./server/scripts/cloud-scripts/zkcli.sh -- -zkhost zookeeper-service-qas.catalogi.svc:2181 -cmd upconfig metadatacatalogus -confdir server/solr/cataloguspro/conf/ -confname cataloguspro
 
