@@ -135,7 +135,7 @@ objects:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 6Gi
+            storage: ${disksize}
       status:
         phase: Pending
   status:
@@ -279,7 +279,7 @@ objects:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 6Gi
+            storage: ${disksize}
       status:
         phase: Pending
   status:
@@ -508,3 +508,5 @@ parameters:
     value: "qas"
   - name: SOLR_VERSION_MAJ
     value: "6"
+  - name: disksize
+    value: "20Gi"
