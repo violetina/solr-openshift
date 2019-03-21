@@ -1,0 +1,414 @@
+# TODO: testen of zookeeper beide nodes vind als ze zelfde source port hebben (wel andere targetPort in service) of andere oplossing vinden ivm ports
+
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: solr
+objects:
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: solr-01-${ENV}
+  spec:
+    podManagementPolicy: OrderedReady
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: solr-${ENV}
+        replica: '01'
+    template:
+      metadata:
+        labels:
+          app: solr-${ENV}
+          replica: '01'
+      spec:
+        containers:
+        - env:
+          - name: SOLR_HOME
+            value: /store/data
+          - name: SOLR_PORT
+            value: '2080'
+          - name: ZK_HOST
+            value: zookeeper-service-${ENV}:2181
+          - name: SOLR_HOST
+            value: solr-01-${ENV}
+          - name: SOLR_LOGS_DIR
+            value: /store/logs
+          image: solr:${SOLR_VERSION_MAJ}
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /solr
+              port: 2080
+            initialDelaySeconds: 60
+            timeoutSeconds: 13
+          name: solr-${ENV}
+          ports:
+          - containerPort: 2080
+            name: solr-port
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - echo > /dev/tcp/zookeeper-service-${ENV}/2181
+            initialDelaySeconds: 50
+            timeoutSeconds: 10
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: solrdata
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - args:
+          - mkdir -p /store/data;  mkdir -p /store/data ;  chmod 755  -R /store ;
+            chown 8983:8983 -R  /store/
+          command:
+          - /bin/sh
+          - -c
+          image: busybox
+          imagePullPolicy: Always
+          name: init-solr-data
+          resources: {}
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: solrdata
+        - args:
+          - cp /opt/solr/server/solr/solr.xml /store/data/solr.xml
+          command:
+          - /bin/sh
+          - -c
+          image: solr:6
+          imagePullPolicy: Always
+          name: init-solr-xml
+          resources: {}
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: solrdata
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          anyuid: true
+          readOnlyRootFilesystem: false
+          runAsUser: 8983
+        terminationGracePeriodSeconds: 10
+        volumes:
+        - name: solrdata
+          persistentVolumeClaim:
+            claimName: task-solr-pv-claim
+    updateStrategy:
+      rollingUpdate:
+        partition: 0
+      type: RollingUpdate
+    volumeClaimTemplates:
+    - metadata:
+        name: solrdata
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: ${disksize}
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: solr-02-${ENV}
+  spec:
+    podManagementPolicy: OrderedReady
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: solr-${ENV}
+        replica: '02'
+    template:
+      metadata:
+        labels:
+          app: solr-${ENV}
+          replica: '02'
+      spec:
+        containers:
+        - env:
+          - name: SOLR_HOME
+            value: /store/data
+          - name: SOLR_PORT
+            value: '2080'
+          - name: ZK_HOST
+            value: zookeeper-service-${ENV}:2181
+          - name: SOLR_HOST
+            value: solr-01-${ENV}
+          - name: SOLR_LOGS_DIR
+            value: /store/logs
+          image: solr:${SOLR_VERSION_MAJ}
+          imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /solr
+              port: 2080
+            initialDelaySeconds: 60
+            timeoutSeconds: 13
+          name: solr-${ENV}
+          ports:
+          - containerPort: 2080
+            name: http
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - echo > /dev/tcp/zookeeper-service-${ENV}/2181
+            initialDelaySeconds: 50
+            timeoutSeconds: 10
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: solrdata
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - args:
+          - mkdir -p /store/data;  mkdir -p /store/data ;  chmod 755  -R /store ;
+            chown 8983:8983 -R  /store/
+          command:
+          - /bin/sh
+          - -c
+          image: busybox
+          imagePullPolicy: Always
+          name: init-solr-data
+          resources: {}
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: solrdata
+        - args:
+          - cp /opt/solr/server/solr/solr.xml /store/data/solr.xml
+          command:
+          - /bin/sh
+          - -c
+          image: solr:6
+          imagePullPolicy: Always
+          name: init-solr-xml
+          resources: {}
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: false
+            runAsUser: 0
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: solrdata
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          anyuid: true
+          readOnlyRootFilesystem: false
+          runAsUser: 8983
+        terminationGracePeriodSeconds: 10
+        volumes:
+        - name: solrdata
+          persistentVolumeClaim:
+            claimName: task-solr-pv-claim
+    updateStrategy:
+      rollingUpdate:
+        partition: 0
+      type: RollingUpdate
+    volumeClaimTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: solrdata
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: ${disksize}
+- apiVersion: apps/v1
+  kind: StatefulSet
+  metadata:
+    name: zookeeper-${ENV}
+  spec:
+    podManagementPolicy: OrderedReady
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: zookeeper-${ENV}
+    serviceName: zookeeper-${ENV}
+    template:
+      metadata:
+        labels:
+          app: zookeeper-${ENV}
+      spec:
+        containers:
+        - env:
+          - name: ZOO_MY_ID
+            value: '1'
+          - name: ZOO_LOG_DIR
+            value: /store/logs
+          - name: ZOO_DATA_DIR
+            value: /store/data
+          - name: ZOO_DATA_LOG_DIR
+            value: /store/datalog
+          - name: ZOO_PORT
+            value: '2181'
+          image: zookeeper:latest
+          imagePullPolicy: Always
+          name: zookeeper-${ENV}
+          ports:
+          - containerPort: 2181
+            name: zookeeper-port
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: volzookeeper-${ENV}
+        dnsPolicy: ClusterFirst
+        initContainers:
+        - command:
+          - sh
+          - -c
+          - mkdir -p /store/data && chown 1000:1000 /store/data
+          image: busybox
+          imagePullPolicy: Always
+          name: init-zookeeper-data
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: volzookeeper-${ENV}
+        - command:
+          - sh
+          - -c
+          - mkdir -p /store/logs && chown 1000:1000 /store/logs
+          image: busybox
+          imagePullPolicy: Always
+          name: init-zookeeper-logs
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: volzookeeper-${ENV}
+        - command:
+          - sh
+          - -c
+          - mkdir -p /store/datalog && chown 1000:1000 /store/datalog
+          image: busybox
+          imagePullPolicy: Always
+          name: init-zookeeper-datalog
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /store
+            name: volzookeeper-${ENV}
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          privileged: true
+          readOnlyRootFilesystem: false
+        terminationGracePeriodSeconds: 10
+        volumes:
+        - name: volzookeeper-${ENV}
+          persistentVolumeClaim:
+            claimName: task-zookeeper-pv-claim
+    updateStrategy:
+      rollingUpdate:
+        partition: 0
+      type: RollingUpdate
+    volumeClaimTemplates:
+    - metadata:
+        name: volzookeeper-${ENV}
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: solr-01-${ENV}
+  spec:
+    ports:
+    - name: http
+      port: 2080
+      protocol: TCP
+      targetPort: 2080
+    selector:
+      app: solr-${ENV}
+      replica: '01'
+    sessionAffinity: None
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: solr-02-${ENV}
+  spec:
+    ports:
+    - name: http
+      port: 2080
+      protocol: TCP
+      targetPort: 2081
+    selector:
+      app: solr-${ENV}
+      replica: '02'
+    sessionAffinity: None
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: solr-${ENV}
+  spec:
+    ports:
+    - name: http
+      port: 2080
+      protocol: TCP
+      targetPort: 2080
+    selector:
+      app: solr-${ENV}
+    sessionAffinity: None
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: zookeeper-service-${ENV}
+  spec:
+    ports:
+    - port: 2181
+      protocol: TCP
+      targetPort: 2181
+    selector:
+      app: zookeeper-${ENV}
+    sessionAffinity: None
+parameters:
+- name: ENV
+  value: tst
+- name: SOLR_VERSION_MAJ
+  value: "6"
+- name: disksize
+  value: 20Gi
