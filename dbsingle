@@ -1,0 +1,9 @@
+database-name
+single-file-upload-frontend
+database-password
+iNwpUijbdN4GqTyR
+database-url
+postgres://single-file-upload-frontend:iNwpUijbdN4GqTyR@db-single-file-upload-frontend-qas:5432/single-file-upload-frontend
+database-user
+single-file-upload-frontend
+Show Annotations
